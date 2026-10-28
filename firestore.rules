@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Connection test document
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // User profiles & community leaderboard
+    match /users/{userId} {
+      // Authenticated users can read profiles to populate the Friend Eco-League leaderboard
+      allow read: if isSignedIn() && isValidId(userId);
+
+      // Only the user themselves can create or update their profile
+      allow create: if isOwner(userId)
+                    && isValidId(userId)
+                    && incoming().uid == userId
+                    && incoming().displayName is string
+                    && incoming().displayName.size() <= 100;
+
+      allow update: if isOwner(userId)
+                    && isValidId(userId)
+                    && incoming().uid == userId
+                    && incoming().uid == existing().uid;
+
+      allow delete: if false;
+
+      // User activities subcollection
+      match /activities/{activityId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId)
+                      && isValidId(activityId)
+                      && incoming().userId == userId
+                      && incoming().title is string
+                      && incoming().title.size() <= 200
+                      && incoming().pointsEarned is number;
+        allow update: if isOwner(userId)
+                      && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId);
+      }
+
+      // User weekly challenges tracking
+      match /challenges/{challengeId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidId(challengeId);
+      }
+
+      // User settings & compost reminders
+      match /settings/{settingId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidId(settingId);
+      }
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Represents an authenticated user profile with score, streaks, and badges.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 255 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "points": { "type": "number" },
+        "streakDays": { "type": "number" },
+        "badges": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "displayName", "email"]
+    },
+    "Activity": {
+      "title": "Eco Activity Log",
+      "description": "Logged upcycling, sorting, composting, or cleanup action.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 50 },
+        "pointsEarned": { "type": "number" },
+        "carbonSavedKg": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "category", "pointsEarned"]
+    },
+    "Challenge": {
+      "title": "User Challenge Progress",
+      "description": "Tracks progress on weekly eco-challenges.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "currentCount": { "type": "number" },
+        "targetCount": { "type": "number" },
+        "completed": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title"]
+    },
+    "CompostReminder": {
+      "title": "Compost Care Settings",
+      "description": "User preferences and schedule for compost aeration and watering.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "enabled": { "type": "boolean" },
+        "frequencyDays": { "type": "number" },
+        "lastTurnedDate": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "enabled", "frequencyDays"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents keyed by Firebase Auth UID."
+    },
+    "/users/{userId}/activities/{activityId}": {
+      "schema": "Activity",
+      "description": "Historical log of sustainable activities submitted by the user."
+    },
+    "/users/{userId}/challenges/{challengeId}": {
+      "schema": "Challenge",
+      "description": "Challenge tracking records for the user."
+    },
+    "/users/{userId}/settings/compostReminder": {
+      "schema": "CompostReminder",
+      "description": "Compost care aeration reminders and schedule for the user."
+    }
+  }
+}

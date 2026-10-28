@@ -1,0 +1,7 @@
+{
+  "name": "Nirmalatvam - Towards a Greener, Cleaner Tomorrow",
+  "description": "Smart eco-friendly waste sorting, creative DIY upcycling guides, home composting wizard, local recycling center directory, and gamified community eco-league.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
