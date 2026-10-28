@@ -473,7 +473,7 @@ function generateSmartFallback(query: string) {
 }
 
 // AI Waste Classifier endpoint
-app.post('/api/waste/classify', async (req: Request, res: Response) => {
+app.post(['/api/waste/classify', '/api/waste/scan-image'], async (req: Request, res: Response) => {
   try {
     const { itemName, imageBase64, mimeType } = req.body;
 
@@ -486,12 +486,23 @@ app.post('/api/waste/classify', async (req: Request, res: Response) => {
     if (itemName && !imageBase64) {
       const staticMatch = getStaticItemMatch(itemName);
       if (staticMatch) {
-        return res.json({ success: true, data: staticMatch, source: 'static-instant-list' });
+        return res.json({
+          success: true,
+          data: {
+            ...staticMatch,
+            carbonAvoided: staticMatch.environmentalImpact.carbonSavedGrams,
+            ecoPoints: staticMatch.environmentalImpact.ecoPoints,
+            compostable: staticMatch.isCompostable,
+            disposalAction: staticMatch.disposalInstructions.stepByStep.join('. '),
+            upcyclingTutorial: staticMatch.upcyclingIdea.description,
+          },
+          source: 'static-instant-list'
+        });
       }
     }
 
     // 2. DYNAMIC AI CLASSIFICATION VIA GEMINI:
-    // For custom waste items (e.g., "chapati", "chewing gum", "old shoes") or uploaded images, call Gemini dynamically!
+    // Support photo scanning and custom search queries with gemini-1.5-flash and rapid fallback models
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (apiKey) {
@@ -507,12 +518,17 @@ app.post('/api/waste/classify', async (req: Request, res: Response) => {
 
         const promptText = `
 You are the expert eco-system intelligence behind "Nirmalatvam".
-Accurately classify this waste item: "${itemName || 'the item in the provided image'}".
+Accurately identify and classify this waste item: "${itemName || 'the item in the provided image'}".
 
 Return strict JSON only (no markdown, no backticks, just raw valid JSON):
 {
-  "itemName": "Proper Title Case Item Name",
+  "itemName": "Specific Item Name (e.g., Plastic Water Bottle, Chapati, Chewing Gum)",
   "category": "Recyclable" | "Organic" | "E-Waste" | "Non-Recyclable" | "Hazardous",
+  "carbonAvoided": 120,
+  "ecoPoints": 40,
+  "compostable": boolean,
+  "disposalAction": "Clear step-by-step guidance for proper disposal and bin designation",
+  "upcyclingTutorial": "Detailed creative tutorial for second-life or DIY upcycling project",
   "subCategory": "Accurate subcategory",
   "material": "Primary material constitution",
   "upcyclingIdea": {
@@ -549,8 +565,8 @@ Return strict JSON only (no markdown, no backticks, just raw valid JSON):
         }
         contents.push({ text: promptText });
 
-        // Try gemini-3.1-flash-lite first for rapid dynamic responses
-        const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+        // User requested gemini-1.5-flash; fallback to fast models if needed
+        const modelsToTry = ['gemini-1.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
         let parsedResult = null;
 
         for (const modelName of modelsToTry) {
@@ -568,6 +584,18 @@ Return strict JSON only (no markdown, no backticks, just raw valid JSON):
             if (text) {
               parsedResult = JSON.parse(text);
               if (parsedResult.itemName && parsedResult.category) {
+                // Ensure top-level and nested fields are both populated
+                parsedResult.carbonAvoided = parsedResult.carbonAvoided ?? parsedResult.environmentalImpact?.carbonSavedGrams ?? 100;
+                parsedResult.ecoPoints = parsedResult.ecoPoints ?? parsedResult.environmentalImpact?.ecoPoints ?? 35;
+                parsedResult.compostable = parsedResult.compostable ?? parsedResult.isCompostable ?? false;
+                parsedResult.isCompostable = parsedResult.compostable;
+                if (!parsedResult.environmentalImpact) {
+                  parsedResult.environmentalImpact = {
+                    carbonSavedGrams: parsedResult.carbonAvoided,
+                    ecoPoints: parsedResult.ecoPoints,
+                    funFact: `Sorting ${parsedResult.itemName} protects local ecosystems.`
+                  };
+                }
                 return res.json({ success: true, data: parsedResult, source: modelName });
               }
             }
@@ -580,9 +608,20 @@ Return strict JSON only (no markdown, no backticks, just raw valid JSON):
       }
     }
 
-    // 3. Fallback to smart item-aware generator if API was unreachable
+    // 3. Fallback to smart item-aware generator if API was unreachable or key not present
     const fallbackData = generateSmartFallback(itemName || 'waste item');
-    return res.json({ success: true, data: fallbackData, source: 'smart-fallback' });
+    return res.json({
+      success: true,
+      data: {
+        ...fallbackData,
+        carbonAvoided: fallbackData.environmentalImpact.carbonSavedGrams,
+        ecoPoints: fallbackData.environmentalImpact.ecoPoints,
+        compostable: fallbackData.isCompostable,
+        disposalAction: fallbackData.disposalInstructions.stepByStep.join('. '),
+        upcyclingTutorial: fallbackData.upcyclingIdea.description,
+      },
+      source: 'smart-fallback'
+    });
   } catch (err: any) {
     console.error('Classification error:', err);
     res.status(500).json({ error: 'Failed to classify item. Please try again.' });
