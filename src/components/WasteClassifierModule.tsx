@@ -21,7 +21,7 @@ import {
   ScanLine
 } from 'lucide-react';
 import { WasteClassificationResult, WasteCategory } from '../types';
-import { POPULAR_ITEMS_CATALOG, ASSET_IMAGES } from '../data/mockData';
+import { POPULAR_ITEMS_CATALOG, ASSET_IMAGES, FALLBACK_IMAGE } from '../data/mockData';
 import { useToast } from './Toast';
 
 interface WasteClassifierModuleProps {
@@ -233,30 +233,59 @@ export const WasteClassifierModule: React.FC<WasteClassifierModuleProps> = ({
     'Cotton T-Shirt'
   ];
 
-  // Instant local catalog matcher (0ms latency for all catalog items)
-  const findLocalMatch = (query: string): WasteClassificationResult | null => {
-    const q = query.toLowerCase().trim();
-    return (
-      POPULAR_ITEMS_CATALOG.find((item) => {
-        const name = item.itemName.toLowerCase();
-        return name.includes(q) || q.includes(name.split(' ')[0]);
-      }) || null
-    );
+  // Check if query matches one of the static instant-pick items
+  const getStaticItemMatch = (query: string): WasteClassificationResult | null => {
+    const q = query.trim().toLowerCase();
+    if (!q) return null;
+
+    if (q === 'plastic bottle' || q === 'plastic water bottle' || q === 'water bottle' || q === 'pet bottle') {
+      return POPULAR_ITEMS_CATALOG[0];
+    }
+    if (q === 'coffee grounds' || q === 'spent coffee grounds' || q === 'coffee') {
+      return POPULAR_ITEMS_CATALOG[1];
+    }
+    if (q === 'cardboard box' || q === 'corrugated box' || q === 'cardboard') {
+      return POPULAR_ITEMS_CATALOG[2];
+    }
+    if (q === 'glass jar' || q === 'jam jar' || q === 'glass food jar') {
+      return POPULAR_ITEMS_CATALOG[3];
+    }
+    if (q === 'battery' || q === 'batteries' || q === 'alkaline battery' || q === 'aa battery') {
+      return POPULAR_ITEMS_CATALOG[4];
+    }
+    if (q === 'aluminum can' || q === 'soda can' || q === 'tin can' || q === 'coke can') {
+      return POPULAR_ITEMS_CATALOG[5];
+    }
+    if (q === 'banana peels' || q === 'banana peel' || q === 'fruit peels') {
+      return POPULAR_ITEMS_CATALOG[6];
+    }
+    if (q === 'cotton t-shirt' || q === 'cotton shirt' || q === 't-shirt' || q === 'tshirt') {
+      return POPULAR_ITEMS_CATALOG[7];
+    }
+
+    const exact = POPULAR_ITEMS_CATALOG.find((item) => item.itemName.toLowerCase() === q);
+    return exact || null;
   };
 
   // Search or classify
   const handleSearch = async (queryText?: string) => {
-    const itemToLookup = queryText || searchQuery;
-    if (!itemToLookup.trim()) return;
+    const itemToLookup = (queryText || searchQuery).trim();
+    if (!itemToLookup) return;
 
-    // Instant optimistic match if available locally
-    const local = findLocalMatch(itemToLookup);
-    if (local) {
-      setSelectedResult(local);
+    // 1. If search query matches an item in the static list, continue using the static item immediately (0ms)
+    const staticMatch = getStaticItemMatch(itemToLookup);
+    if (staticMatch) {
+      setSelectedResult(staticMatch);
+      setIsLoading(false);
+      setImagePreview(null);
+      stopCamera();
+      return;
     }
 
+    // 2. Custom item (e.g. "chapati", "chewing gum", "old shoes"):
+    // Dynamically call the Gemini API with active loading state and skeleton loader
     setIsLoading(true);
-    setAnalysisStatusText(`Checking "${itemToLookup}" with material intelligence...`);
+    setAnalysisStatusText(`Consulting Gemini AI waste intelligence for "${itemToLookup}"...`);
     setImagePreview(null);
     stopCamera();
 
@@ -264,15 +293,22 @@ export const WasteClassifierModule: React.FC<WasteClassifierModuleProps> = ({
       const response = await fetch('/api/waste/classify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemName: itemToLookup.trim() }),
+        body: JSON.stringify({ itemName: itemToLookup }),
       });
 
       const resData = await response.json();
       if (resData.success && resData.data) {
         setSelectedResult(resData.data);
+        showToast(
+          `Classified "${resData.data.itemName}" as ${resData.data.category}`,
+          resData.data.environmentalImpact?.ecoPoints,
+          'success'
+        );
+      } else {
+        showToast(`Could not classify "${itemToLookup}". Please try another search.`, undefined, 'alert');
       }
     } catch (err) {
-      // Keep local result
+      showToast('Network error while classifying item.', undefined, 'alert');
     } finally {
       setIsLoading(false);
     }
@@ -477,14 +513,13 @@ export const WasteClassifierModule: React.FC<WasteClassifierModuleProps> = ({
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search any item (e.g., Plastic Bottle, Cardboard Box, Coffee Grounds, Glass Jar, Battery)..."
+                placeholder="Search any item (e.g., chapati, chewing gum, old shoes, plastic bottle)..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  // Real-time zero-latency preview if match exists
-                  const quickMatch = findLocalMatch(e.target.value);
-                  if (quickMatch && e.target.value.length >= 3) {
-                    setSelectedResult(quickMatch);
+                  const staticMatch = getStaticItemMatch(e.target.value);
+                  if (staticMatch) {
+                    setSelectedResult(staticMatch);
                   }
                 }}
                 className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
@@ -569,7 +604,14 @@ export const WasteClassifierModule: React.FC<WasteClassifierModuleProps> = ({
           {/* Photo preview thumbnail */}
           {imagePreview && (
             <div className="mb-4 flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-              <img src={imagePreview} alt="Captured waste item" className="w-12 h-12 object-cover rounded-lg border border-slate-300" />
+              <img
+                src={imagePreview}
+                alt="Captured waste item"
+                onError={(e) => {
+                  e.currentTarget.src = FALLBACK_IMAGE;
+                }}
+                className="w-12 h-12 object-cover rounded-lg border border-slate-300"
+              />
               <div className="flex-1 text-xs text-slate-600">
                 <span className="font-medium text-slate-900 block">Photo Compressed & Analyzed</span>
                 Optimized in-memory payload transferred in milliseconds.
@@ -836,6 +878,10 @@ export const WasteClassifierModule: React.FC<WasteClassifierModuleProps> = ({
                 <img
                   src={ASSET_IMAGES.upcyclingWorkshop}
                   alt="Upcycled DIY craft workshop"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.src = FALLBACK_IMAGE;
+                  }}
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />

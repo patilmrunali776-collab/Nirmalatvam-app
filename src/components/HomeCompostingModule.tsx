@@ -22,7 +22,7 @@ import {
   Calendar,
   X
 } from 'lucide-react';
-import { COMPOST_INGREDIENTS, ASSET_IMAGES } from '../data/mockData';
+import { COMPOST_INGREDIENTS, ASSET_IMAGES, FALLBACK_IMAGE } from '../data/mockData';
 import { useToast } from './Toast';
 
 interface HomeCompostingModuleProps {
@@ -713,6 +713,10 @@ export const HomeCompostingModule: React.FC<HomeCompostingModuleProps> = ({ onLo
                 <img
                   src={ASSET_IMAGES.compostSoil}
                   alt="Rich organic compost humus"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.src = FALLBACK_IMAGE;
+                  }}
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />

@@ -7,12 +7,15 @@ import {
   LoggedActivity,
 } from '../types';
 
+export const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80';
+
 export const ASSET_IMAGES = {
-  hero: '/src/assets/images/hero_eco_living_1793172904717.jpg',
-  compostSoil: '/src/assets/images/compost_soil_seedling_1793172905646.jpg',
-  avatar: '/src/assets/images/avatar_eco_user_1793172906622.jpg',
-  upcyclingWorkshop: '/src/assets/images/upcycling_diy_craft_1793172907196.jpg',
+  hero: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1600&q=80',
+  compostSoil: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=1200&q=80',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+  upcyclingWorkshop: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=1200&q=80',
 };
+
 
 export const POPULAR_ITEMS_CATALOG: WasteClassificationResult[] = [
   {
@@ -311,6 +314,7 @@ export const RECYCLING_CENTERS: RecyclingCenter[] = [
     openNow: true,
     phone: '+1 (555) 234-7890',
     website: 'https://greenhaven-recovery.eco',
+    imageUrl: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=800&q=80',
     acceptedMaterials: [
       'PET #1 & HDPE #2 Plastics',
       'Corrugated Cardboard & Mixed Paper',
@@ -333,6 +337,7 @@ export const RECYCLING_CENTERS: RecyclingCenter[] = [
     openNow: true,
     phone: '+1 (555) 890-4421',
     website: 'https://metrosafehub.org',
+    imageUrl: 'https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&w=800&q=80',
     acceptedMaterials: [
       'Household Alkaline & Lithium Batteries',
       'Smartphones, Laptops & Tablet PCs',
@@ -355,6 +360,7 @@ export const RECYCLING_CENTERS: RecyclingCenter[] = [
     openNow: true,
     phone: '+1 (555) 662-1198',
     website: 'https://sunshinecompost.green',
+    imageUrl: 'https://images.unsplash.com/photo-1592417817098-8f3d6910985c?auto=format&fit=crop&w=800&q=80',
     acceptedMaterials: [
       'Raw Fruit & Vegetable Scraps',
       'Untreated Garden Wood Prunings & Twigs',
@@ -377,6 +383,7 @@ export const RECYCLING_CENTERS: RecyclingCenter[] = [
     openNow: true,
     phone: '+1 (555) 345-9988',
     website: 'https://ecocircularfilms.org',
+    imageUrl: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=800&q=80',
     acceptedMaterials: [
       'Clean Plastic Grocery Bags (LDPE #4)',
       'Bubble Mailers & Bubble Wrap',
@@ -399,6 +406,7 @@ export const RECYCLING_CENTERS: RecyclingCenter[] = [
     openNow: false,
     phone: '+1 (555) 771-3320',
     website: 'https://apexmetals-reclaim.com',
+    imageUrl: 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
     acceptedMaterials: [
       'Brass, Copper Pipe & Plumbing Fixtures',
       'Stainless Steel Sinks & Cookware',
@@ -576,7 +584,8 @@ export const INITIAL_LEADERBOARD_FRIENDS: FriendLeaderboardUser[] = [
     rank: 1,
     badges: ['Circular Champion', 'E-Waste Guardian', 'Compost Master'],
     recentAction: 'Turned 12kg cold-cured compost into community garden beds',
-    kudosCount: 28
+    kudosCount: 28,
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
   },
   {
     id: 'usr-3',
@@ -586,7 +595,8 @@ export const INITIAL_LEADERBOARD_FRIENDS: FriendLeaderboardUser[] = [
     rank: 3,
     badges: ['Upcycle Artisan', 'Plastic Saver'],
     recentAction: 'Crafted 4 self-watering planters from PET beverage bottles',
-    kudosCount: 19
+    kudosCount: 19,
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80'
   },
   {
     id: 'usr-4',
@@ -596,7 +606,8 @@ export const INITIAL_LEADERBOARD_FRIENDS: FriendLeaderboardUser[] = [
     rank: 4,
     badges: ['River Protector', 'Clean Sweep'],
     recentAction: 'Collected 3kg plastic bottles along waterfront trails',
-    kudosCount: 11
+    kudosCount: 11,
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80'
   },
   {
     id: 'usr-5',
@@ -606,7 +617,8 @@ export const INITIAL_LEADERBOARD_FRIENDS: FriendLeaderboardUser[] = [
     rank: 5,
     badges: ['Soil Enthusiast', 'Zero Waste'],
     recentAction: 'Set up balanced 3:1 Brown:Green lasagna compost bin',
-    kudosCount: 8
+    kudosCount: 8,
+    avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&q=80'
   },
   {
     id: 'usr-6',
@@ -616,7 +628,8 @@ export const INITIAL_LEADERBOARD_FRIENDS: FriendLeaderboardUser[] = [
     rank: 6,
     badges: ['Battery SafeKeeper'],
     recentAction: 'Dropped off 18 spent lithium-ion cells at Metro SafeHub',
-    kudosCount: 6
+    kudosCount: 6,
+    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80'
   }
 ];
 

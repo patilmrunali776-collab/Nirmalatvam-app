@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
 
@@ -14,15 +14,15 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '20mb' }));
 
-// Rich instant database for rapid (<5ms) responses & offline reliability
-const COMPREHENSIVE_CATALOG: Record<string, any> = {
+// Static Instant-Pick Items Catalog (Only used for exact/direct matches to instant pick items)
+const STATIC_INSTANT_CATALOG: Record<string, any> = {
   'plastic bottle': {
-    itemName: 'PET Plastic Water Bottle (#1)',
+    itemName: 'Plastic Water Bottle (PET #1)',
     category: 'Recyclable',
-    subCategory: 'Polyethylene Terephthalate (PET)',
-    material: 'Plastic #1 (PETE)',
+    subCategory: 'Polyethylene Terephthalate (PET #1)',
+    material: 'Clear rigid thermoplastic polymer',
     upcyclingIdea: {
-      title: 'Self-Watering Sub-Irrigation Seedling Planter',
+      title: 'Capillary Self-Watering Indoor Herb Planter',
       description: 'Cut horizontally, invert the neck with a cotton wick submerged in the base reservoir for an automated herb planter.',
       difficulty: 'Easy',
       timeMinutes: 15,
@@ -164,7 +164,7 @@ const COMPREHENSIVE_CATALOG: Record<string, any> = {
     material: 'Heavy Metals (Zinc, Manganese, Lithium, Cobalt)',
     upcyclingIdea: {
       title: 'Safe Battery Storage Station & Terminal Taping',
-      description: 'Used batteries cannot be directly upcycled at home due to chemical hazard, but organizing a safe home drop-box prevents accidental fires before recycling.',
+      description: 'Used batteries cannot be safely dismantled at home due to chemical hazard, but organizing a safe home drop-box prevents accidental fires before recycling.',
       difficulty: 'Easy',
       timeMinutes: 5,
       steps: [
@@ -228,7 +228,7 @@ const COMPREHENSIVE_CATALOG: Record<string, any> = {
     isCompostable: false,
     compostType: 'Not recommended'
   },
-  'banana peel': {
+  'banana peels': {
     itemName: 'Banana & Fruit Peels',
     category: 'Organic',
     subCategory: 'Potassium-Rich Kitchen Waste',
@@ -296,126 +296,183 @@ const COMPREHENSIVE_CATALOG: Record<string, any> = {
     },
     isCompostable: true,
     compostType: 'Brown'
-  },
-  'eggshell': {
-    itemName: 'Crushed Eggshells',
-    category: 'Organic',
-    subCategory: 'Calcium Carbonate Soil Buffer',
-    material: 'Natural Mineral Calcium Carbonate',
-    upcyclingIdea: {
-      title: 'Seed-Starting Mini Nursery Pots & Tomato Blossom-End Rot Shield',
-      description: 'Fill half eggshell halves with seed starting mix for biodegradable seedling pods, or crush into planting holes for tomatoes to supply calcium.',
-      difficulty: 'Easy',
-      timeMinutes: 10,
-      steps: [
-        'Rinse eggshell halves gently in warm water to clear residual albumen.',
-        'Poke a tiny drainage hole at the bottom using a pin.',
-        'Fill with seed starting soil and sow a single basil or tomato seed.',
-        'When transplanting into the garden, plant the entire shell directly in soil.'
-      ],
-      toolsNeeded: ['Clean eggshells', 'Pin', 'Potting mix', 'Seeds']
-    },
-    disposalInstructions: {
-      stepByStep: [
-        'Crush finely with hands or a rolling pin.',
-        'Toss into your compost pile or worm bin.',
-        'Or place into green wet waste bin.'
-      ],
-      binColor: 'Green (Wet/Compostable)',
-      cautionNotes: 'Crushed eggshells also act as an abrasive crawl barrier against slugs and garden snails.'
-    },
-    environmentalImpact: {
-      carbonSavedGrams: 60,
-      ecoPoints: 30,
-      funFact: 'Eggshells are 95% pure calcium carbonate, neutralizing acidic compost naturally.'
-    },
-    isCompostable: true,
-    compostType: 'Green'
-  },
-  'plastic bag': {
-    itemName: 'Plastic Grocery Bag / Soft Film (#4 LDPE)',
-    category: 'Recyclable',
-    subCategory: 'Low-Density Polyethylene Film',
-    material: 'Flexible LDPE #4 Plastic',
-    upcyclingIdea: {
-      title: 'Woven Waterproof Bicycle Seat Cover or Plarn Mat',
-      description: 'Cut clean plastic grocery bags into continuous plastic yarn (plarn) and weave into durable waterproof picnic mats or bicycle saddle rain covers.',
-      difficulty: 'Moderate',
-      timeMinutes: 30,
-      steps: [
-        'Flatten bags, snip off handles and bottom seam.',
-        'Cut into 2-inch rings and loop together to form plastic yarn (plarn).',
-        'Crochet or braid loops together into a weatherproof water-resistant saddle cover.'
-      ],
-      toolsNeeded: ['Scissors', 'Crochet hook or safety pin']
-    },
-    disposalInstructions: {
-      stepByStep: [
-        'NEVER place loose plastic bags in curbside recycling bins (they jam sorting wheels).',
-        'Stuff multiple clean plastic bags inside one bag until volleyball-sized.',
-        'Drop off at grocery store front-entrance plastic film collection bins.'
-      ],
-      binColor: 'Special Drop-off',
-      cautionNotes: 'Must be clean and dry. No greasy food residue or chip bags (which contain metalized foil).'
-    },
-    environmentalImpact: {
-      carbonSavedGrams: 140,
-      ecoPoints: 40,
-      funFact: 'Recovered plastic film is turned into composite lumber for durable outdoor park benches and decking.'
-    },
-    isCompostable: false,
-    compostType: 'Not recommended'
   }
 };
 
-// Fast catalog search helper
-function findCatalogMatch(query: string) {
+// Check if search query matches one of the static instant-pick items
+function getStaticItemMatch(query: string) {
   const q = query.toLowerCase().trim();
   if (!q) return null;
 
-  // Direct key check
-  for (const [key, val] of Object.entries(COMPREHENSIVE_CATALOG)) {
-    if (q === key || q.includes(key) || key.includes(q)) {
-      return val;
-    }
-  }
-
-  // Synonym & keyword heuristics
-  if (q.includes('bottle') || q.includes('pet') || q.includes('plastic cup') || q.includes('water bottle')) {
-    return COMPREHENSIVE_CATALOG['plastic bottle'];
-  }
-  if (q.includes('coffee') || q.includes('tea') || q.includes('grounds')) {
-    return COMPREHENSIVE_CATALOG['coffee grounds'];
-  }
-  if (q.includes('box') || q.includes('carton') || q.includes('cardboard') || q.includes('shipping') || q.includes('paper')) {
-    return COMPREHENSIVE_CATALOG['cardboard box'];
-  }
-  if (q.includes('jar') || q.includes('glass') || q.includes('wine') || q.includes('sauce bottle')) {
-    return COMPREHENSIVE_CATALOG['glass jar'];
-  }
-  if (q.includes('battery') || q.includes('cell') || q.includes('lithium') || q.includes('charger') || q.includes('e-waste')) {
-    return COMPREHENSIVE_CATALOG['battery'];
-  }
-  if (q.includes('can') || q.includes('aluminum') || q.includes('tin') || q.includes('soda') || q.includes('beer')) {
-    return COMPREHENSIVE_CATALOG['aluminum can'];
-  }
-  if (q.includes('banana') || q.includes('peel') || q.includes('fruit') || q.includes('apple') || q.includes('vegetable') || q.includes('scrap')) {
-    return COMPREHENSIVE_CATALOG['banana peel'];
-  }
-  if (q.includes('shirt') || q.includes('cloth') || q.includes('fabric') || q.includes('textile') || q.includes('cotton')) {
-    return COMPREHENSIVE_CATALOG['cotton t-shirt'];
-  }
-  if (q.includes('egg') || q.includes('eggshell')) {
-    return COMPREHENSIVE_CATALOG['eggshell'];
-  }
-  if (q.includes('bag') || q.includes('film') || q.includes('poly') || q.includes('wrapper') || q.includes('plastic bag')) {
-    return COMPREHENSIVE_CATALOG['plastic bag'];
-  }
+  // Exact aliases for the 8 instant pick buttons
+  if (q === 'plastic bottle' || q === 'plastic water bottle' || q === 'water bottle' || q === 'pet bottle') return STATIC_INSTANT_CATALOG['plastic bottle'];
+  if (q === 'cardboard box' || q === 'cardboard' || q === 'corrugated box') return STATIC_INSTANT_CATALOG['cardboard box'];
+  if (q === 'coffee grounds' || q === 'spent coffee grounds' || q === 'coffee') return STATIC_INSTANT_CATALOG['coffee grounds'];
+  if (q === 'glass jar' || q === 'jam jar' || q === 'glass food jar') return STATIC_INSTANT_CATALOG['glass jar'];
+  if (q === 'battery' || q === 'batteries' || q === 'alkaline battery') return STATIC_INSTANT_CATALOG['battery'];
+  if (q === 'aluminum can' || q === 'tin can' || q === 'soda can') return STATIC_INSTANT_CATALOG['aluminum can'];
+  if (q === 'banana peels' || q === 'banana peel' || q === 'fruit peels') return STATIC_INSTANT_CATALOG['banana peels'];
+  if (q === 'cotton t-shirt' || q === 'cotton shirt' || q === 't-shirt' || q === 'tshirt') return STATIC_INSTANT_CATALOG['cotton t-shirt'];
 
   return null;
 }
 
-// AI Waste Classifier endpoint with rapid response optimization
+// Fallback dynamic generator if AI network call is unavailable or times out
+function generateSmartFallback(query: string) {
+  const q = query.toLowerCase();
+  const titleName = query.charAt(0).toUpperCase() + query.slice(1);
+
+  if (q.includes('chapati') || q.includes('roti') || q.includes('bread') || q.includes('food') || q.includes('rice') || q.includes('apple') || q.includes('vegetable')) {
+    return {
+      itemName: titleName,
+      category: 'Organic',
+      subCategory: 'Cooked Kitchen Food Scrap',
+      material: 'Organic Grain / Wheat Biomass',
+      upcyclingIdea: {
+        title: `${titleName} Garden Nitrogen Compost Booster`,
+        description: `Tear stale ${q} into small chunks and soak lightly in water before adding to compost to feed soil microbes and earthworms.`,
+        difficulty: 'Easy',
+        timeMinutes: 5,
+        steps: [
+          `Tear or chop ${q} into small 1-inch pieces.`,
+          'Scatter evenly into the center core of your compost pile.',
+          'Cover with 2 inches of dry brown leaves or cardboard to deter pests.',
+          'Moisten slightly to activate aerobic digestion.'
+        ],
+        toolsNeeded: ['Kitchen knife or hands', 'Water', 'Dry leaves/shredded paper']
+      },
+      disposalInstructions: {
+        stepByStep: [
+          'Scrape into kitchen organic food scrap caddy.',
+          'Do not mix with plastic wrappers.',
+          'Deposit into Green Compost / Wet Waste bin.'
+        ],
+        binColor: 'Green (Wet/Compostable)',
+        cautionNotes: 'Keep covered with carbon materials to avoid attracting fruit flies.'
+      },
+      environmentalImpact: {
+        carbonSavedGrams: 75,
+        ecoPoints: 30,
+        funFact: 'Composting bread and grain scraps prevents methane emissions from landfill decay.'
+      },
+      isCompostable: true,
+      compostType: 'Green'
+    };
+  }
+
+  if (q.includes('gum') || q.includes('chewing')) {
+    return {
+      itemName: titleName,
+      category: 'Non-Recyclable',
+      subCategory: 'Synthetic Elastomer Polymer',
+      material: 'Synthetic Gum Base (Polyisobutylene) & Resin',
+      upcyclingIdea: {
+        title: 'Proper Encapsulation & Litter Prevention',
+        description: 'Chewing gum cannot be safely home-upcycled due to synthetic polymers, but proper wrapping prevents wildlife hazards.',
+        difficulty: 'Easy',
+        timeMinutes: 1,
+        steps: [
+          'Fold used gum into its original paper wrapper or scrap paper.',
+          'Press edges firmly closed so it does not stick to surfaces.',
+          'Discard into general domestic residual waste bin.'
+        ],
+        toolsNeeded: ['Scrap paper or wrapper']
+      },
+      disposalInstructions: {
+        stepByStep: [
+          'Wrap securely in waste paper or tissue.',
+          'Place in Black/Grey Landfill Bin.',
+          'NEVER spit onto pavement or discard into nature (takes over 50 years to degrade).'
+        ],
+        binColor: 'Black/Grey Bin (Landfill Residual)',
+        cautionNotes: 'Contains synthetic polymers; strictly non-compostable and non-recyclable.'
+      },
+      environmentalImpact: {
+        carbonSavedGrams: 20,
+        ecoPoints: 15,
+        funFact: 'Cities spend millions cleaning dropped gum; specialized industrial facilities now recycle gum into boot soles.'
+      },
+      isCompostable: false,
+      compostType: 'Not recommended'
+    };
+  }
+
+  if (q.includes('shoe') || q.includes('sneaker') || q.includes('boot')) {
+    return {
+      itemName: titleName,
+      category: 'Non-Recyclable',
+      subCategory: 'Composite Footwear (Rubber, Foam, Textiles)',
+      material: 'Vulcanized Rubber, EVA Foam, Synthetic Leather',
+      upcyclingIdea: {
+        title: 'Whimsical Outdoor Garden Boot Planter',
+        description: 'Repurpose worn-out shoes into quirky weather-resistant planters for hardy succulents or trailing ivy.',
+        difficulty: 'Easy',
+        timeMinutes: 20,
+        steps: [
+          'Drill or poke 3 small drainage holes in the bottom rubber sole.',
+          'Fill the toe and heel cavity with potting soil mixed with compost.',
+          'Plant small hardy succulents like sedum or jade.',
+          'Place on garden steps or porch for a charming zero-waste accent.'
+        ],
+        toolsNeeded: ['Drill or awl', 'Potting mix', 'Succulent cuttings']
+      },
+      disposalInstructions: {
+        stepByStep: [
+          'If gently used: clean and donate to charity thrifts.',
+          'If completely worn: check for athletic shoe recycling drop-offs (e.g. Nike Reuse-A-Shoe).',
+          'If no drop-off exists, place in general residual bin.'
+        ],
+        binColor: 'Special Drop-off (Shoe Reclamation)',
+        cautionNotes: 'Shoes contain bonded mixed glues and cannot go into curbside bins.'
+      },
+      environmentalImpact: {
+        carbonSavedGrams: 650,
+        ecoPoints: 60,
+        funFact: 'Recycled rubber shoe soles are granulated into cushioned playground surfaces and running tracks.'
+      },
+      isCompostable: false,
+      compostType: 'Not recommended'
+    };
+  }
+
+  // General intelligent fallback
+  return {
+    itemName: titleName,
+    category: 'Recyclable',
+    subCategory: 'Consumer Household Item',
+    material: 'Mixed Material',
+    upcyclingIdea: {
+      title: `Creative Repurposing for ${titleName}`,
+      description: `Clean and inspect ${q} to see if components can be reused for home organization or craft projects.`,
+      difficulty: 'Easy',
+      timeMinutes: 15,
+      steps: [
+        'Inspect item for reusable parts, fasteners, or containers.',
+        'Clean surfaces thoroughly with warm soapy water.',
+        'Repurpose into utility storage or decorative accent.'
+      ],
+      toolsNeeded: ['Cleaning cloth', 'Scissors']
+    },
+    disposalInstructions: {
+      stepByStep: [
+        'Separate any removable recyclable elements (paper, plastic, metal).',
+        'Check local municipal waste sorting guide.',
+        'Place cleaned dry recyclables in Blue bin, or residual in domestic bin.'
+      ],
+      binColor: 'Blue (Dry/Recyclable)',
+      cautionNotes: 'Verify municipal accepted materials before curbside disposal.'
+    },
+    environmentalImpact: {
+      carbonSavedGrams: 100,
+      ecoPoints: 35,
+      funFact: 'Conscious sorting diverts tons of salvageable materials from overflowing landfills.'
+    },
+    isCompostable: false,
+    compostType: 'Not recommended'
+  };
+}
+
+// AI Waste Classifier endpoint
 app.post('/api/waste/classify', async (req: Request, res: Response) => {
   try {
     const { itemName, imageBase64, mimeType } = req.body;
@@ -424,22 +481,19 @@ app.post('/api/waste/classify', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Please provide either an item name or an image to classify.' });
     }
 
-    // 1. FAST PATH FOR TEXT QUERIES: If item matches our catalog, return in < 5ms!
+    // 1. STATIC INSTANT-PICK CHECK:
+    // If the search query matches an item in the static list, continue using the static item immediately!
     if (itemName && !imageBase64) {
-      const catalogMatch = findCatalogMatch(itemName);
-      if (catalogMatch) {
-        const itemResult = JSON.parse(JSON.stringify(catalogMatch));
-        // Keep user specific name if typed
-        if (itemName.length > 2 && !itemResult.itemName.toLowerCase().includes(itemName.toLowerCase())) {
-          itemResult.itemName = itemName.charAt(0).toUpperCase() + itemName.slice(1);
-        }
-        return res.json({ success: true, data: itemResult, source: 'instant-catalog' });
+      const staticMatch = getStaticItemMatch(itemName);
+      if (staticMatch) {
+        return res.json({ success: true, data: staticMatch, source: 'static-instant-list' });
       }
     }
 
+    // 2. DYNAMIC AI CLASSIFICATION VIA GEMINI:
+    // For custom waste items (e.g., "chapati", "chewing gum", "old shoes") or uploaded images, call Gemini dynamically!
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 2. GEMINI AI PATH (Optimized for low latency: ThinkingLevel.LOW and 4-second timeout race)
     if (apiKey) {
       try {
         const ai = new GoogleGenAI({
@@ -452,32 +506,32 @@ app.post('/api/waste/classify', async (req: Request, res: Response) => {
         });
 
         const promptText = `
-You are the fast eco-system intelligence behind "Nirmalatvam".
-Quickly analyze this waste item: "${itemName || 'the item in the provided image'}".
+You are the expert eco-system intelligence behind "Nirmalatvam".
+Accurately classify this waste item: "${itemName || 'the item in the provided image'}".
 
-Return strict JSON only (no markdown, no extra commentary):
+Return strict JSON only (no markdown, no backticks, just raw valid JSON):
 {
-  "itemName": "Specific recognizable item name",
+  "itemName": "Proper Title Case Item Name",
   "category": "Recyclable" | "Organic" | "E-Waste" | "Non-Recyclable" | "Hazardous",
-  "subCategory": "Brief material classification",
-  "material": "Primary material",
+  "subCategory": "Accurate subcategory",
+  "material": "Primary material constitution",
   "upcyclingIdea": {
-    "title": "Creative DIY project title",
-    "description": "Short 1-2 sentence DIY idea",
+    "title": "Creative practical DIY project title",
+    "description": "Engaging 1-2 sentence overview of second-life transformation",
     "difficulty": "Easy" | "Moderate" | "Advanced",
     "timeMinutes": 15,
     "steps": ["Step 1...", "Step 2...", "Step 3...", "Step 4..."],
     "toolsNeeded": ["Tool 1", "Tool 2"]
   },
   "disposalInstructions": {
-    "stepByStep": ["Step 1...", "Step 2..."],
+    "stepByStep": ["Step 1 for proper disposal...", "Step 2..."],
     "binColor": "Blue (Dry/Recyclable)" | "Green (Wet/Compostable)" | "Red/Black (Hazardous/Domestic)" | "Special Drop-off",
-    "cautionNotes": "Safety tip"
+    "cautionNotes": "Safety tip or precaution"
   },
   "environmentalImpact": {
-    "carbonSavedGrams": 150,
-    "ecoPoints": 45,
-    "funFact": "One brief environmental fact"
+    "carbonSavedGrams": 120,
+    "ecoPoints": 40,
+    "funFact": "One fascinating verified environmental or material fact"
   },
   "isCompostable": boolean,
   "compostType": "Green" | "Brown" | "Not recommended"
@@ -495,39 +549,40 @@ Return strict JSON only (no markdown, no extra commentary):
         }
         contents.push({ text: promptText });
 
-        // Race Gemini call against a 4.5-second timeout so the user is never kept waiting
-        const geminiPromise = ai.models.generateContent({
-          model: 'gemini-3.8-flash',
-          contents,
-          config: {
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }, // Prevents long thinking pauses
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        });
+        // Try gemini-3.1-flash-lite first for rapid dynamic responses
+        const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+        let parsedResult = null;
 
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI generation timeout')), 4500)
-        );
+        for (const modelName of modelsToTry) {
+          try {
+            const response = await ai.models.generateContent({
+              model: modelName,
+              contents,
+              config: {
+                responseMimeType: 'application/json',
+                temperature: 0.1,
+              },
+            });
 
-        const response: any = await Promise.race([geminiPromise, timeoutPromise]);
-        const text = response.text;
-        if (text) {
-          const parsed = JSON.parse(text);
-          return res.json({ success: true, data: parsed, source: 'gemini-3.8-flash' });
+            const text = response.text;
+            if (text) {
+              parsedResult = JSON.parse(text);
+              if (parsedResult.itemName && parsedResult.category) {
+                return res.json({ success: true, data: parsedResult, source: modelName });
+              }
+            }
+          } catch (modelErr: any) {
+            console.warn(`Model ${modelName} failed or unavailable:`, modelErr?.message || modelErr);
+          }
         }
       } catch (geminiError: any) {
-        console.warn('Gemini fast fallback engaged:', geminiError?.message || geminiError);
+        console.warn('Gemini classification exception:', geminiError?.message || geminiError);
       }
     }
 
-    // 3. FALLBACK / INSTANT HEURISTIC
-    const matched = findCatalogMatch(itemName || 'plastic bottle') || COMPREHENSIVE_CATALOG['plastic bottle'];
-    const fallbackData = JSON.parse(JSON.stringify(matched));
-    if (itemName && !imageBase64) {
-      fallbackData.itemName = itemName.charAt(0).toUpperCase() + itemName.slice(1);
-    }
-    return res.json({ success: true, data: fallbackData, source: 'nirmalatvam-catalog' });
+    // 3. Fallback to smart item-aware generator if API was unreachable
+    const fallbackData = generateSmartFallback(itemName || 'waste item');
+    return res.json({ success: true, data: fallbackData, source: 'smart-fallback' });
   } catch (err: any) {
     console.error('Classification error:', err);
     res.status(500).json({ error: 'Failed to classify item. Please try again.' });
@@ -559,20 +614,14 @@ Provide a clear, encouraging diagnostic response in JSON:
   "temperatureStatus": "Optimum aerobic range: 45°C - 65°C"
 }`;
 
-        const geminiPromise = ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
           contents: prompt,
           config: {
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             responseMimeType: 'application/json',
           },
         });
 
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Diagnosis timeout')), 3500)
-        );
-
-        const response: any = await Promise.race([geminiPromise, timeoutPromise]);
         if (response.text) {
           return res.json({ success: true, diagnosis: JSON.parse(response.text) });
         }

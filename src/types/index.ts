@@ -48,6 +48,7 @@ export interface RecyclingCenter {
   rules: string;
   lat: number;
   lng: number;
+  imageUrl?: string;
 }
 
 export interface CompostIngredient {

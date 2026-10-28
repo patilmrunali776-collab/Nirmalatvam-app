@@ -308,6 +308,25 @@ export const EcoLeagueModule: React.FC<EcoLeagueModuleProps> = ({
                         {rankNum}
                       </span>
 
+                      {/* Avatar */}
+                      <div className="relative w-7 h-7 rounded-full overflow-hidden bg-emerald-100 shrink-0 border border-slate-200">
+                        {user.avatarUrl ? (
+                          <img
+                            src={user.avatarUrl}
+                            alt={user.name}
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : null}
+                        <div className="absolute inset-0 flex items-center justify-center text-3xs font-bold text-emerald-800 uppercase">
+                          {user.name.slice(0, 2)}
+                        </div>
+                      </div>
+
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-bold truncate ${isUser ? 'text-emerald-950' : 'text-slate-900'}`}>

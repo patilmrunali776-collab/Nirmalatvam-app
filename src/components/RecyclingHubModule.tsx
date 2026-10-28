@@ -18,7 +18,7 @@ import {
   X
 } from 'lucide-react';
 import { RecyclingCenter } from '../types';
-import { RECYCLING_CENTERS } from '../data/mockData';
+import { RECYCLING_CENTERS, FALLBACK_IMAGE } from '../data/mockData';
 import { useToast } from './Toast';
 
 interface RecyclingHubModuleProps {
@@ -308,23 +308,50 @@ export const RecyclingHubModule: React.FC<RecyclingHubModuleProps> = ({ onLogAct
           {filteredCenters.map((center) => (
             <div
               key={center.id}
-              className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition-all"
+              className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition-all overflow-hidden"
             >
               <div>
+                {/* Facility Photo Header */}
+                {center.imageUrl && (
+                  <div className="relative h-36 w-[calc(100%+2.5rem)] -mx-5 -mt-5 mb-4 bg-slate-100 overflow-hidden">
+                    <img
+                      src={center.imageUrl}
+                      alt={center.name}
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.src = FALLBACK_IMAGE;
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent" />
+                    <span
+                      className={`absolute top-3 right-3 text-3xs font-semibold px-2 py-0.5 rounded-md shadow-xs ${
+                        center.openNow
+                          ? 'bg-emerald-600/90 text-white backdrop-blur-xs'
+                          : 'bg-slate-900/80 text-white backdrop-blur-xs'
+                      }`}
+                    >
+                      {center.openNow ? 'Open Now' : 'Closed Today'}
+                    </span>
+                  </div>
+                )}
+
                 {/* Header status */}
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <span className="text-xs font-medium text-slate-500">
                     {center.cityArea} · <span className="font-mono text-emerald-700 font-bold">{center.distanceKm} km</span>
                   </span>
-                  <span
-                    className={`text-3xs font-semibold px-2 py-0.5 rounded-md ${
-                      center.openNow
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-slate-100 text-slate-600'
-                    }`}
-                  >
-                    {center.openNow ? 'Open Now' : 'Closed Today'}
-                  </span>
+                  {!center.imageUrl && (
+                    <span
+                      className={`text-3xs font-semibold px-2 py-0.5 rounded-md ${
+                        center.openNow
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {center.openNow ? 'Open Now' : 'Closed Today'}
+                    </span>
+                  )}
                 </div>
 
                 <h3 className="text-base font-bold text-slate-900 tracking-tight leading-snug mb-2">

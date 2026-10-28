@@ -31,6 +31,7 @@ import {
   INITIAL_LEADERBOARD_FRIENDS,
   INITIAL_ACTIVITIES,
   ASSET_IMAGES,
+  FALLBACK_IMAGE,
 } from './data/mockData';
 import { FriendLeaderboardUser, EcoChallenge, LoggedActivity } from './types';
 import {
@@ -366,6 +367,9 @@ function AppContent() {
                 <img
                   src={firebaseUser.photoURL || currentUser.avatarUrl || ASSET_IMAGES.avatar}
                   alt={firebaseUser.displayName || 'User'}
+                  onError={(e) => {
+                    e.currentTarget.src = FALLBACK_IMAGE;
+                  }}
                   className="w-7 h-7 rounded-full object-cover border border-emerald-500 shadow-2xs"
                   referrerPolicy="no-referrer"
                 />
